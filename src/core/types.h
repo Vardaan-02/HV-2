@@ -216,11 +216,11 @@ constexpr Square& operator-=(Square& s, Direction d) noexcept { return s = s - d
 }
 
 [[nodiscard]] constexpr Square flip_rank(Square s) noexcept { 
-    return static_cast<Square>(s ^ SQ_A8); 
+    return static_cast<Square>(static_cast<uint8_t>(s) ^ static_cast<uint8_t>(SQ_A8)); 
 }
 
 [[nodiscard]] constexpr Square flip_file(Square s) noexcept { 
-    return static_cast<Square>(s ^ SQ_H1); 
+    return static_cast<Square>(static_cast<uint8_t>(s) ^ static_cast<uint8_t>(SQ_H1)); 
 }
 
 [[nodiscard]] constexpr Piece operator~(Piece pc) noexcept { 
@@ -256,7 +256,7 @@ constexpr Square& operator-=(Square& s, Direction d) noexcept { return s = s - d
 }
 
 [[nodiscard]] constexpr File file_of(Square s) noexcept { 
-    return static_cast<File>(s & 7); 
+    return static_cast<File>(static_cast<uint8_t>(s) & 7); 
 }
 
 [[nodiscard]] constexpr Rank rank_of(Square s) noexcept { 
@@ -264,7 +264,7 @@ constexpr Square& operator-=(Square& s, Direction d) noexcept { return s = s - d
 }
 
 [[nodiscard]] constexpr Square relative_square(Color c, Square s) noexcept { 
-    return static_cast<Square>(s ^ (c * 56)); 
+    return static_cast<Square>(static_cast<uint8_t>(s) ^ static_cast<uint8_t>(c * 56)); 
 }
 
 [[nodiscard]] constexpr Rank relative_rank(Color c, Rank r) noexcept { 
