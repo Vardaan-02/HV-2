@@ -72,4 +72,6 @@
     └── utils/                        # System utilities & tuning hooks
         ├── tuning.h/.cpp             # Compile-time / runtime SPSA tuning parameter registry
         ├── benchmark.h/.cpp          # Standardized bench command execution
+        ├── stack_vector.h/.cpp       # Stack-allocated vector with bounds and iterator support
+        ├── misc.h/.cpp               # Monotonic clock, filesystem path resolution and synchronized console
         └── memory.h/.cpp             # Large page / aligned allocator helpers
