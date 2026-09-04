@@ -5,7 +5,7 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-# Enable optimization flags and native CPU features (BMI2 / POPCNT)
+# Optimization flags & native CPU features
 if (CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
     add_compile_options(-O3 -march=native -Wall -Wextra -pedantic)
 elseif (MSVC)
@@ -34,6 +34,7 @@ set(SOURCES
     src/utils/misc.cpp
     src/position/position.cpp
     src/movegen/movegen.cpp
+    src/search/tt.cpp
     src/main.cpp
 )
 
