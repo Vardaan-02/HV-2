@@ -364,25 +364,32 @@ bool Position::legal(Move m) const noexcept {
     if (m.type_of() == EN_PASSANT) {
         const Square   ksq      = square<KING>(us);
         const Square   capsq    = to - pawn_push(us);
-        const Bitboard occupied = (pieces() ^ from ^ capsq) | to;
+        const Bitboard occupied = (pieces() ^ square_bb(from) ^ square_bb(capsq)) | square_bb(to);
 
         return !(attacks_bb<ROOK>(ksq, occupied) & pieces(~us, QUEEN, ROOK))
             && !(attacks_bb<BISHOP>(ksq, occupied) & pieces(~us, QUEEN, BISHOP));
     }
 
     if (m.type_of() == CASTLING) {
-        to = relative_square(us, to > from ? SQ_G1 : SQ_C1);
-        const Direction step = to > from ? WEST : EAST;
+        // King cannot castle out of check
+        if (checkers())
+            return false;
 
-        for (Square s = to; s != from; s += step) {
+        // In our generator, castling 'to' is the rook's initial square
+        const Square kingTo = relative_square(us, to > from ? SQ_G1 : SQ_C1);
+        const Direction step = (kingTo > from) ? EAST : WEST;
+
+        // Check transit squares between king's starting square and destination square
+        for (Square s = from + step; s != kingTo + step; s += step) {
             if (attackers_to_exist(s, pieces(), ~us))
                 return false;
         }
-        return !chess960 || !(blockers_for_king(us) & m.to_sq());
+
+        return !chess960 || !(blockers_for_king(us) & to);
     }
 
     if (type_of(piece_on(from)) == KING) {
-        return !attackers_to_exist(to, pieces() ^ from, ~us);
+        return !attackers_to_exist(to, pieces() ^ square_bb(from), ~us);
     }
 
     return !(blockers_for_king(us) & from) || (line_bb(from, to) & pieces(us, KING));
@@ -457,7 +464,17 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) noexcept {
 
     Key k = st->key ^ Zobrist::side;
 
-    std::memcpy(&newSt, st, offsetof(StateInfo, key));
+    newSt.materialKey        = st->materialKey;
+    newSt.pawnKey            = st->pawnKey;
+    newSt.minorPieceKey      = st->minorPieceKey;
+    newSt.nonPawnKey[WHITE]  = st->nonPawnKey[WHITE];
+    newSt.nonPawnKey[BLACK]  = st->nonPawnKey[BLACK];
+    newSt.nonPawnMaterial[WHITE] = st->nonPawnMaterial[WHITE];
+    newSt.nonPawnMaterial[BLACK] = st->nonPawnMaterial[BLACK];
+    newSt.castlingRights     = st->castlingRights;
+    newSt.rule50             = st->rule50;
+    newSt.pliesFromNull      = st->pliesFromNull;
+    newSt.epSquare           = st->epSquare;
     newSt.previous = st;
     st             = &newSt;
 
