@@ -35,6 +35,7 @@ struct StateInfo {
     Key        key{0};
     Bitboard   checkersBB{0};
     StateInfo* previous{nullptr};
+    Move       currentMove{Move::none()};
     Bitboard   blockersForKing[COLOR_NB]{0, 0};
     Bitboard   pinners[COLOR_NB]{0, 0};
     Bitboard   checkSquares[PIECE_TYPE_NB]{0, 0, 0, 0, 0, 0, 0, 0};

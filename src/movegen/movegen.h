@@ -11,6 +11,7 @@
 
 namespace Engine::MoveGen {
 
+using Core::ExtMove;
 using Core::Move;
 using Core::Square;
 using Core::Piece;
@@ -24,24 +25,6 @@ enum GenType {
     EVASIONS,
     NON_EVASIONS,
     LEGAL
-};
-
-struct ExtMove : public Move {
-    int value{0};
-
-    constexpr ExtMove() noexcept = default;
-    constexpr explicit ExtMove(Move m) noexcept : Move(m), value(0) {}
-    constexpr ExtMove(Move m, int v) noexcept : Move(m), value(v) {}
-
-    constexpr ExtMove& operator=(Move m) noexcept {
-        data = m.raw();
-        value = 0;
-        return *this;
-    }
-
-    [[nodiscard]] constexpr bool operator<(const ExtMove& other) const noexcept {
-        return value < other.value;
-    }
 };
 
 template<GenType Type>

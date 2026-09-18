@@ -495,6 +495,7 @@ void Position::do_move(Move m, StateInfo& newSt, bool givesCheck) noexcept {
     newSt.pliesFromNull          = st->pliesFromNull;
     newSt.epSquare               = SQ_NONE; // Reset ep square by default
     newSt.previous               = st;
+    newSt.currentMove            = m;
     st                           = &newSt;
 
     ++gamePly;

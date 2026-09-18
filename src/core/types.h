@@ -340,6 +340,25 @@ protected:
     uint16_t data{0};
 };
 
+// Extended move for move-ordering heuristics: combines Move with a scoring value
+struct ExtMove : public Move {
+    int value{0};
+
+    constexpr ExtMove() noexcept = default;
+    constexpr explicit ExtMove(Move m) noexcept : Move(m), value(0) {}
+    constexpr ExtMove(Move m, int v) noexcept : Move(m), value(v) {}
+
+    constexpr ExtMove& operator=(Move m) noexcept {
+        data = m.raw();
+        value = 0;
+        return *this;
+    }
+
+    [[nodiscard]] constexpr bool operator<(const ExtMove& other) const noexcept {
+        return value < other.value;
+    }
+};
+
 template<typename T, typename... Ts>
 struct is_all_same {
     static constexpr bool value = (std::is_same_v<T, Ts> && ...);

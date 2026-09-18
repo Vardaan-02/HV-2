@@ -4,6 +4,7 @@
 #include "core/bitboard.h"
 #include "position/position.h"
 #include "movegen/perft.h"
+#include "movegen/movepicker.h"
 #include "search/tt.h"
 #include "search/history.h"
 
@@ -14,7 +15,7 @@ int main() {
     std::cout << "Initializing Transposition Table (64 MB)...\n";
     Engine::Search::TT.resize(64);
 
-    // TT probe verification
+    // TT verification
     bool found = false;
     const Engine::Core::Key testKey = 0x123456789ABCDEF0ULL;
     Engine::Search::TTEntry* entry = Engine::Search::TT.probe(testKey, found);
@@ -32,13 +33,32 @@ int main() {
     assert(probed->bound() == Engine::Search::BOUND_EXACT);
     (void)probed;
 
-    // History Table verification
+    // History and MovePicker verification
     Engine::Search::ButterflyHistory history;
     history.clear();
-    history.update(Engine::Core::WHITE, Engine::Core::SQ_E2, Engine::Core::SQ_E4, 300);
-    assert(history.get(Engine::Core::WHITE, Engine::Core::SQ_E2, Engine::Core::SQ_E4) > 0);
+    Engine::Search::CounterMoveTable counterMoves;
+    counterMoves.clear();
+    Engine::Search::KillerTable killers;
+    killers.clear();
 
-    std::cout << "TT and History tables initialized cleanly.\n\n";
+    Engine::Position::Position pos;
+    Engine::Position::StateInfo st;
+    pos.set("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", false, &st);
+
+    const Engine::Core::Move ttMove = Engine::Core::Move::make<Engine::Core::NORMAL>(Engine::Core::SQ_E2, Engine::Core::SQ_E4);
+    Engine::MoveGen::MovePicker mp(pos, ttMove, 4, &history, &counterMoves, &killers, 0);
+
+    const Engine::Core::Move firstMove = mp.next_move();
+    assert(firstMove == ttMove);
+    (void)firstMove; // Silences -Wunused-but-set-variable
+
+    int moveCount = 1;
+    while (mp.next_move() != Engine::Core::Move::none()) {
+        ++moveCount;
+    }
+    assert(moveCount == 20);
+
+    std::cout << "TT, History, and MovePicker verified (" << moveCount << " moves picked in order).\n\n";
 
     return Engine::MoveGen::run_full_perft_suite() ? 0 : 1;
 }
