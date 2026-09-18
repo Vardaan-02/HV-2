@@ -1,5 +1,8 @@
 #include "search/search.h"
+#include "search/tt.h"
+#include <chrono>
 #include <iostream>
+#include <algorithm>
 
 namespace Engine::Search {
 
@@ -21,17 +24,95 @@ Core::Value static_evaluate(const Position::Position& pos) noexcept {
 
 } // namespace
 
+int64_t allocate_time(const SearchLimits& limits, Core::Color us) noexcept {
+    if (limits.moveTime > 0) {
+        return limits.moveTime;
+    }
+
+    int64_t timeRemaining = limits.time[us];
+    int64_t increment = limits.inc[us];
+
+    if (timeRemaining <= 0) return 100; // Default fallback (100ms)
+
+    int movesToGo = (limits.movesToGo > 0) ? limits.movesToGo : 30;
+    int64_t targetTime = (timeRemaining / movesToGo) + (increment * 3 / 4);
+
+    return std::min(targetTime, static_cast<int64_t>(timeRemaining * 0.8));
+}
+
 bool Searcher::should_stop() noexcept {
     if (stopRequested_.load(std::memory_order_relaxed)) return true;
-    if ((nodes_ & 2047) == 0 && limits_.moveTime > 0) {
-        auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
-            std::chrono::steady_clock::now() - startTime_).count();
-        if (elapsed >= limits_.moveTime) {
+
+    // Periodically check elapsed time every 2048 nodes if time limit is active
+    if ((nodes_ & 2047) == 0 && (limits_.moveTime > 0 || limits_.time[Core::WHITE] > 0 || limits_.time[Core::BLACK] > 0)) {
+        auto now = std::chrono::steady_clock::now();
+        auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - startTime_).count();
+        if (elapsed >= allocatedTimeMs_) {
             stopRequested_.store(true, std::memory_order_relaxed);
             return true;
         }
     }
     return false;
+}
+
+void Searcher::start_search(Position::Position& pos, const SearchLimits& limits) noexcept {
+    limits_ = limits;
+    stopRequested_.store(false, std::memory_order_relaxed);
+    nodes_ = 0;
+    startTime_ = std::chrono::steady_clock::now();
+    allocatedTimeMs_ = allocate_time(limits, pos.side_to_move());
+
+    TT.new_search(); // Increment TT generation counter
+
+    Core::Move bestMove = Core::Move::none();
+    Core::Move previousBestMove = Core::Move::none();
+    Core::Value bestScore = -Core::VALUE_INFINITE;
+
+    Stack stack[Core::MAX_PLY + 1];
+    for (int i = 0; i <= Core::MAX_PLY; ++i) {
+        stack[i].ply = i;
+        stack[i].currentMove = Core::Move::none();
+    }
+
+    const int maxDepth = (limits_.depth > 0) ? std::min(limits_.depth, Core::MAX_PLY) : Core::MAX_PLY;
+
+    // Iterative Deepening Loop
+    for (Core::Depth depth = 1; depth <= maxDepth; ++depth) {
+        Core::Value score = pvs(pos, -Core::VALUE_INFINITE, Core::VALUE_INFINITE, depth, stack);
+
+        if (should_stop()) break;
+
+        bestScore = score;
+        
+        // Retrieve best move found from TT for current root depth
+        bool found = false;
+        TTEntry* tte = TT.probe(pos.key(), found);
+        if (found && tte->move() != Core::Move::none()) {
+            bestMove = tte->move();
+            previousBestMove = bestMove;
+        }
+
+        // UCI Info output
+        auto now = std::chrono::steady_clock::now();
+        auto elapsedMs = std::chrono::duration_cast<std::chrono::milliseconds>(now - startTime_).count();
+        uint64_t nps = (elapsedMs > 0) ? (nodes_ * 1000) / elapsedMs : 0;
+
+        std::cout << "info depth " << depth
+                  << " score cp " << bestScore
+                  << " nodes " << nodes_
+                  << " nps " << nps
+                  << " time " << elapsedMs
+                  << " hashfull " << TT.hashfull()
+                  << " pv " << bestMove.to_string()
+                  << std::endl;
+    }
+
+    // Fall back to previous iterative best if search stopped mid-depth
+    if (bestMove == Core::Move::none()) {
+        bestMove = previousBestMove;
+    }
+
+    std::cout << "bestmove " << bestMove.to_string() << std::endl;
 }
 
 Core::Value Searcher::qsearch(Position::Position& pos, Core::Value alpha, Core::Value beta, Stack* ss) noexcept {
@@ -139,32 +220,6 @@ Core::Value Searcher::pvs(Position::Position& pos, Core::Value alpha, Core::Valu
     tte->save(pos.key(), bestScore, bound, depth, bestMove, Core::VALUE_NONE, TT.generation());
 
     return bestScore;
-}
-
-void Searcher::start_search(Position::Position& pos, const SearchLimits& limits) noexcept {
-    limits_ = limits;
-    startTime_ = std::chrono::steady_clock::now();
-    stopRequested_.store(false);
-    nodes_ = 0;
-
-    Stack stack[Core::MAX_PLY];
-    for (int i = 0; i < Core::MAX_PLY; ++i) stack[i].ply = i;
-
-    Core::Value alpha = -Core::VALUE_INFINITE;
-    Core::Value beta = Core::VALUE_INFINITE;
-
-    for (Core::Depth d = 1; d <= limits_.depth; ++d) {
-        Core::Value score = pvs(pos, alpha, beta, d, stack);
-        if (stopRequested_.load()) break;
-
-        auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
-            std::chrono::steady_clock::now() - startTime_).count();
-
-        std::cout << "info depth " << d 
-                  << " score cp " << score 
-                  << " nodes " << nodes_ 
-                  << " time " << elapsed << std::endl;
-    }
 }
 
 } // namespace Engine::Search

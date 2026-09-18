@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <type_traits>
+#include <string>
 
 namespace Engine::Core {
 
@@ -335,6 +336,36 @@ public:
             return static_cast<std::size_t>(make_key(m.raw())); 
         }
     };
+
+    [[nodiscard]] std::string to_string() const noexcept {
+        if (*this == none() || *this == null()) return "0000";
+
+        std::string str;
+        // Assuming your square enum values go from SQ_A1 (0) to SQ_H8 (63) 
+        // and you have a square_to_string function or array. 
+        // If your codebase already has a way to map squares to strings, use that, 
+        // or use the standard file/rank calculation below:
+        int f1 = from_sq() % 8, r1 = from_sq() / 8;
+        int f2 = to_sq() % 8, r2 = to_sq() / 8;
+
+        str += static_cast<char>('a' + f1);
+        str += static_cast<char>('1' + r1);
+        str += static_cast<char>('a' + f2);
+        str += static_cast<char>('1' + r2);
+
+        if (type_of() == PROMOTION) {
+            char promoChar = 'q';
+            switch (promotion_type()) {
+                case QUEEN:  promoChar = 'q'; break;
+                case ROOK:   promoChar = 'r'; break;
+                case BISHOP: promoChar = 'b'; break;
+                case KNIGHT: promoChar = 'n'; break;
+                default: break;
+            }
+            str += promoChar;
+        }
+        return str;
+    }
 
 protected:
     uint16_t data{0};

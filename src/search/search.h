@@ -43,6 +43,7 @@ private:
 
     SearchLimits limits_;
     std::chrono::steady_clock::time_point startTime_;
+    int64_t allocatedTimeMs_{0};
     std::atomic<bool> stopRequested_{false};
     uint64_t nodes_{0};
 
