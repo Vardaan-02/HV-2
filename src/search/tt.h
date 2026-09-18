@@ -77,6 +77,7 @@ public:
 
     [[nodiscard]] TTEntry* probe(Key key, bool& found) noexcept;
     [[nodiscard]] int hashfull() const noexcept;
+    [[nodiscard]] uint8_t generation() const noexcept { return generation_; }
 
     // Fast prefetch for Position::do_move
     void prefetch(Key key) const noexcept {

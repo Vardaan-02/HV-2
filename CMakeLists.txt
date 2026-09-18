@@ -36,6 +36,7 @@ set(SOURCES
     src/movegen/movegen.cpp
     src/movegen/movepicker.cpp
     src/search/tt.cpp
+    src/search/search.cpp
     src/main.cpp
 )
 
